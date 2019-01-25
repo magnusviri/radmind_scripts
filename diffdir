@@ -1,0 +1,64 @@
+#!/usr/bin/perl
+
+################################################################################
+# Copyright (c) 2011 University of Utah
+# All Rights Reserved.
+#
+# Permission to use, copy, modify, and distribute this software and
+# its documentation for any purpose and without fee is hereby granted,
+# provided that the above copyright notice appears in all copies and
+# that both that copyright notice and this permission notice appear
+# in supporting documentation, and that the name of The University
+# of Utah not be used in advertising or publicity pertaining to
+# distribution of the software without specific, written prior
+# permission. This software is supplied as is without expressed or
+# implied warranties of any kind.
+################################################################################
+
+die "Install radmind." if ! -e "/usr/local/bin/fsdiff";
+
+my $list1 = `/usr/bin/mktemp /tmp/mnt.XXXXXX`;
+my $list2 = `/usr/bin/mktemp /tmp/mnt.XXXXXX`;
+
+chomp $list1;
+chomp $list2;
+
+my $dir2 = pop @ARGV;
+my $dir1 = pop @ARGV;
+
+if ( ! -d $dir1 or ! -d $dir2 ) {
+  print "\"$dir1\" and \"$dir2\" are not valid directories.\n";
+  usage();
+}
+
+my $cwd = `pwd`;
+chomp $cwd;
+print "Scanning $dir1\n";
+chdir $dir1 or die "Couldn't chdir to $dir1: $!";
+system "/usr/local/bin/fsdiff", "-c", "sha1", "-K", "/dev/null", "-o", $list1, "./";
+chdir $cwd;
+chdir $dir2 or die "Couldn't chdir to $dir2: $!";
+print "Scanning $dir2\n";
+system "/usr/local/bin/fsdiff", "-c", "sha1", "-K", "/dev/null", "-o", $list2, "./";
+
+print "/usr/local/xhooks/bin/tdiff @ARGV $list1 $list2\n";
+system "/usr/local/xhooks/bin/tdiff", @ARGV, $list1, $list2;
+
+####################################
+
+sub usage {
+  my $myname = `basename $0`;
+  chomp $myname;
+  print STDERR << "EOF";
+Usage: $myname [options] dir1 dir2
+
+This script is a convenience that uses fsdiff to scan 2 directories, saving the
+output to two temp files in /tmp.  Then it executes diff_transcript.pl using
+those 2 transcripts.  All arguments supplied to this command are passed to
+diff_transcript.pl.
+
+example: $myname dir1 dir2
+
+EOF
+    exit 1;
+}
